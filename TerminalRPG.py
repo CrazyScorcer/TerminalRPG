@@ -69,24 +69,29 @@ def initBattle(entityList: list):
             printCurrentBattleHP(entityList)
             printPlayerBattleActions()
             userInput = input("Choose your action: ").upper()
+            print("-------------------------------------------------------------------------")
             if userInput == 'A':
                 selectedMonster = 1
                 if len(entityList) > 2:
                     while True:
                         try:
                             selectedMonster = int(input(f"Select Enemy to Attack(1-{len(entityList)-1}): "))
+                            print("-------------------------------------------------------------------------")
                             break
                         except ValueError:
                             print("Invalid Input. Input an Integer.")
 
                 print(f"{entityList[0].Name} attacked {entityList[selectedMonster].Name} for {entityList[selectedMonster].calculateDamage(entityList[0].ATK)}")
+                print("-------------------------------------------------------------------------")
                 time.sleep(.25)
                 if not entityList[selectedMonster].isAlive:
                     print(f"{entityList[0].Name} defeated {entityList[selectedMonster].Name}")
+                    print("-------------------------------------------------------------------------")
                     entityList[0].EXP += entityList[selectedMonster].LVL
                     time.sleep(.25)
                     if entityList[0].checkLVL():
                         print(f"{entityList[0].Name} Leveled UP!\nYou are now Level {entityList[0].LVL}")
+                        print("-------------------------------------------------------------------------")
                     entityList.pop(selectedMonster)
                     actionOrder = defineActionOrder(entityList)
 
@@ -109,6 +114,7 @@ def initBattle(entityList: list):
             else:
                 entityList[actionOrder[currentTurn]].isDefending = True
                 print(f"{entityList[actionOrder[currentTurn]].Name} is Defending")
+            print("-------------------------------------------------------------------------")
 
         # If the player dies during the fight, End Battle
         if not entityList[0].isAlive :
@@ -116,7 +122,6 @@ def initBattle(entityList: list):
         
         currentTurn += 1
         currentTurn %= len(entityList)
-        print("-------------------------------------------------------------------------")
 
     return entityList[0]
 
@@ -141,7 +146,7 @@ def createNewPlayer():
             # Check if PlayerName Exists
             if (cursor.execute("SELECT Count(*) FROM PlayerInfo WHERE PlayerName=?",(name,)).fetchone()[0] != 0):
                 raise Exception("Name already exists. Try again.")
-            playerID = cursor.execute("SELECT COUNT(*) FROM PlayerInfo").fetchone()[0]+1 # Gets the next valid id
+            playerID = cursor.execute("SELECT COUNT(*) FROM PlayerInfo").fetchone()[0]+1 # Gets the next valid id / Implementation is faulty, will need to change
             LVL = 1
             HP = 3
             ATK = 3
