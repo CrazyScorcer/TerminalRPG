@@ -1,0 +1,9 @@
+Add Events
+Add Items
+    Armor
+    Weapons
+    Rarity
+Add Skills
+Add Better names
+Add Story
+
