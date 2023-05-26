@@ -1,4 +1,5 @@
-import Monster, Player, Floor
+import Floor
+from Entity import Player
 import textwrap, random, sqlite3, sys, time
 
 def printPlayerBattleActions():
@@ -131,32 +132,48 @@ def createNewPlayer():
     
     while True:
         print(textwrap.dedent("""\
-            Warrior: High HP, High DEF, Moderate ATK, Low SPD
-            Mage: Ultra ATK, Moderate HP, Moderate SPD, LOW DEF
-            Thief: High ATK, High SPD, Moderate DEF, Low HP"""))
+            1.Warrior: High HP, High DEF, Moderate ATK, Low SPD
+            2.Mage: Ultra ATK, Moderate HP, Moderate SPD, LOW DEF
+            3.Thief: High ATK, High SPD, Moderate DEF, Low HP"""))
         
-        job = input("Choose a class or Back to return to main menu: ")
+        job = input("Choose a number corresponding to a class or Back to return to main menu: ")
 
-        if job == "Back":
-            return None
-        
-        name = input("Choose a class or Back to return to main menu: ")
+        while True:
+            if job == "Back":
+                return None         
+            try:
+                if int(job) > 0 and int(job) <= 3 :
+                    break
+            except ValueError:
+                print("Invalid input.", end="")
+            
+            job = input("Please input a valid class number or Back: ")
 
-        try:
+        name = input("Input the name of your Character or Back to return to main menu: ")
+
+        while True:
+            if name == "Back":
+                return None
             # Check if PlayerName Exists
-            if (cursor.execute("SELECT Count(*) FROM PlayerInfo WHERE PlayerName=?",(name,)).fetchone()[0] != 0):
-                raise Exception("Name already exists. Try again.")
+            elif (cursor.execute("SELECT Count(*) FROM PlayerInfo WHERE PlayerName=?",(name,)).fetchone()[0] != 0):
+                name = input("Name already exists. Try again.")
+            else:
+                break
+
+        try:    
             playerID = cursor.execute("SELECT COUNT(*) FROM PlayerInfo").fetchone()[0]+1 # Gets the next valid id / Implementation is faulty, will need to change
-            LVL = 1
-            HP = 3
-            ATK = 3
-            DEF = 3
-            SPD = 3
+            playerStatsDict = {
+                'LVL': 1,
+                'HP': Player.jobStatsDictionary[job]['MaxHP'],
+                'ATK': Player.jobStatsDictionary[job]['ATK'],
+                'DEF': Player.jobStatsDictionary[job]['DEF'],
+                'SPD': Player.jobStatsDictionary[job]['SPD']
+            }
             seed = random.randint(1,100_000_000_000)
-            cursor.execute("INSERT INTO PlayerInfo VALUES (?,?,?,?,?,?,?,?,?,?,?)",(playerID,name,HP,HP,ATK,DEF,SPD,0,LVL,seed,Player.Job(job[10])))
-            cursor.commit()
             random.seed(seed)
-            return Player.Player(playerID,name,LVL,HP,ATK,DEF,SPD,seed)
+            cursor.execute("INSERT INTO PlayerInfo VALUES (?,?,?,?,?,?,?,?,?,?,?)",(playerID,name,playerStatsDict["HP"],playerStatsDict["HP"],playerStatsDict["ATK"],playerStatsDict["DEF"],playerStatsDict["SPD"],0,playerStatsDict["LVL"],seed,int(job)))
+            cursor.commit()
+            return Player(name,playerStatsDict,job)
         except Exception as e:
             print(e)
             continue
@@ -176,7 +193,14 @@ def createSavedPlayer(characterList):
         if userInput in characterList:        
             try:
                 playerInfo = cursor.execute("SELECT * FROM PlayerInfo WHERE PlayerName=?",(userInput,)).fetchone()
-                player = Player.Player(playerInfo[0],userInput,playerInfo[8],playerInfo[3],playerInfo[4],playerInfo[5],playerInfo[6],playerInfo[9],Player.Job(playerInfo[10]))
+                playerStatsDict = {
+                'LVL': 1,
+                'HP': playerInfo[3],
+                'ATK': playerInfo[4],
+                'DEF': playerInfo[5],
+                'SPD': playerInfo[6]
+                }
+                player = Player(userInput,playerInfo[1],playerStatsDict,playerInfo[10])
                 player.EXP = playerInfo[7]
                 player.HP = playerInfo[2]
                 random.seed(playerInfo[9])
@@ -190,7 +214,7 @@ def createSavedPlayer(characterList):
         else:
             userInput = input("Invalid character name. Input an existing character name: ")
 
-def savePlayer(player: Player.Player):
+def savePlayer(player: Player):
     connection = sqlite3.connect("Info.db")
     cursor = connection.cursor()
     try:
@@ -222,7 +246,7 @@ if __name__ == "__main__":
         else:
             print("Invalid Input")
 
-    floor = Floor.Floor(3,player.seed,player.LVL)
+    floor = Floor.Floor(3,player.LVL)
     for room in floor.roomList:
         entityList = room.monsterList
         entityList.insert(0,player)

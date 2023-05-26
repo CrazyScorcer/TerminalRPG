@@ -3,6 +3,7 @@ Add Items
     Armor
     Weapons
     Rarity
+Store Enums into DB
 Add Skills
 Add Better names
 Add Story
