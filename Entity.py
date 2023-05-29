@@ -1,20 +1,20 @@
 import math,textwrap,random
-from enum import Enum
 
 class Entity():
     def __init__(self, _Type: str, _Name:str, _statDic: dict) -> None:
         self.Type = _Type 
         self.Name = _Name
         self.LVL = _statDic['LVL']
-        self.HP = _statDic['HP']
-        self.MaxHP = _statDic['HP']
+        self.HP = _statDic['MaxHP']
+        self.MaxHP = _statDic['MaxHP']
         self.ATK = _statDic['ATK']
         self.DEF = _statDic['DEF']
         self.SPD = _statDic['SPD']
+        
         self.isDefending = False
         self.isAlive = True
 
-    def calculateDamage(self,damage):
+    def calculateDamage(self,damage) -> int:
         damage = damage*math.pow(math.e,(-self.DEF/damage))
         if self.isDefending:
             damage = damage/2
@@ -27,11 +27,12 @@ class Entity():
 
         return finalDamage
 
-    def printStats(self):
+    def printStats(self) -> None:
         print(textwrap.dedent(f"""\
         Type = {self.Type}
         Name = {self.Name}
         Health = {self.HP}
+        Max Health = {self.MaxHP}
         Attack = {self.ATK}
         Defense = {self.DEF}
         Speed = {self.SPD}"""))
@@ -40,43 +41,25 @@ class Monster(Entity):
     def __init__(self,_monsterName,_monsterStatsDict) -> None:
         super().__init__("Monster",_monsterName,_monsterStatsDict) 
     
-    def randomAction(self):
+    def randomAction(self) -> str:
         return random.choice(["Attack","Defend"])
 
 class Player(Entity):
-    class Job(Enum):
-        WARRIOR = 1
-        MAGE = 2
-        THIEF = 3
-
-    jobStatsDictionary = {
-        Job.WARRIOR: {
-            'MaxHP': 3,
-            'ATK': 2,
-            'DEF': 3,
-            'SPD': 1
-        },
-        Job.MAGE: {
-            'MaxHP': 2,
-            'ATK': 4,
-            'DEF': 1,
-            'SPD': 2    
-        },
-        Job.THIEF: {
-            'MaxHP': 1,
-            'ATK': 3,
-            'DEF': 2,
-            'SPD': 3
-        }
-    }
-    def __init__(self,_playerID,_playerName,_playerStatsDict,_playerJob) -> None:
+    def __init__(self,_playerName: str,_playerStatsDict: dict,_playerJob: int,_playerLVLStats: tuple) -> None:
         super().__init__("Player",_playerName,_playerStatsDict)
-        self.playerID = _playerID
         self.playerJob = _playerJob
+        self.playerLVLStats = _playerLVLStats
+        self.equipment = {
+            "Helmet" : None,
+            "Chestplate" : None,
+            "Leggings" : None,
+            "Footwear" : None,
+            "Weapon": None
+        }
         self.EXP = 0
         self.MaxEXP = round(math.pow(math.e,self.LVL/100)*(self.LVL+5))
     
-    def checkLVL(self):
+    def checkLVL(self) -> bool:
         if self.EXP < self.MaxEXP:
             return False
         
@@ -86,9 +69,10 @@ class Player(Entity):
         self.eventLVLUP()
         return True
     
-    def eventLVLUP(self):
-        self.HP += self.jobStatsDictionary[self.playerID]['MaxHP']
-        self.MaxHP += self.jobStatsDictionary[self.playerID]['MaxHP']
-        self.ATK += self.jobStatsDictionary[self.playerID]['ATK']
-        self.DEF += self.jobStatsDictionary[self.playerID]['DEF']
-        self.SPD += self.jobStatsDictionary[self.playerID]['SPD']
+    def eventLVLUP(self) -> None:
+        self.HP += self.playerLVLStats[0]
+        self.MaxHP += self.playerLVLStats[0]
+        self.ATK += self.playerLVLStats[1]
+        self.DEF += self.playerLVLStats[2]
+        self.SPD += self.playerLVLStats[3]
+
