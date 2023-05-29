@@ -1,8 +1,10 @@
 Add Events
-Add Items
+Add Equipment
     Armor
     Weapons
     Rarity
+Add Usable Items
+    Potions
 Store Enums into DB
 Add Skills
 Add Better names

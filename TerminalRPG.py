@@ -1,20 +1,20 @@
 import Floor
-from Entity import Player
+from Entity import Player,Entity
 import textwrap, random, sqlite3, sys, time
 
-def printPlayerBattleActions():
+def printPlayerBattleActions() -> None:
     print(textwrap.dedent("""\
     A: Attack
     D: Defend
     R: Run Away"""))
 
-def printStartOptions():
+def printStartOptions() -> None:
     print(textwrap.dedent("""\
     N: New Character
     S: Open Save
     Q: Quit Game"""))
 
-def printSavedCharacters():
+def printSavedCharacters() -> list:
     connection = sqlite3.connect("Info.db")
     cursor = connection.cursor()
     resultTuple = cursor.execute("SELECT PlayerName, LVL FROM PlayerInfo").fetchall()
@@ -29,7 +29,7 @@ def printSavedCharacters():
     print("Back")
     return characterList
 
-def printCurrentBattleHP(entityList: list):
+def printCurrentBattleHP(entityList: list[Entity]) -> None:
     print(textwrap.dedent(f"""\
     Player:
     {entityList[0].Name} LVL:{entityList[0].LVL} HP:{entityList[0].HP}/{entityList[0].MaxHP} EXP:{entityList[0].EXP}/{entityList[0].MaxHP}
@@ -38,7 +38,7 @@ def printCurrentBattleHP(entityList: list):
         print(f"{entity.Name} LVL:{entity.LVL} HP:{entity.HP}/{entity.MaxHP}", end=" ")
     print("")
 
-def defineActionOrder(entityList: list):
+def defineActionOrder(entityList: list[Entity]) -> list:
     actionOrder = []
     for index,entity in enumerate(entityList):
         if len(actionOrder) == 0:
@@ -54,8 +54,8 @@ def defineActionOrder(entityList: list):
                 actionOrder.append(index)
     return actionOrder
 
-def initBattle(entityList: list):
-    print("Monsters Encounter")
+def initBattle(entityList: list[Entity]) -> Player:
+    print("Monsters Encountered")
     actionOrder = defineActionOrder(entityList)
     currentTurn = 0
     while True:
@@ -126,7 +126,7 @@ def initBattle(entityList: list):
 
     return entityList[0]
 
-def createNewPlayer():
+def createNewPlayer() -> Player:
     connection = sqlite3.connect("Info.db")
     cursor = connection.cursor()
     
@@ -135,9 +135,8 @@ def createNewPlayer():
             1.Warrior: High HP, High DEF, Moderate ATK, Low SPD
             2.Mage: Ultra ATK, Moderate HP, Moderate SPD, LOW DEF
             3.Thief: High ATK, High SPD, Moderate DEF, Low HP"""))
-        
+        # Request User for valid JobID
         job = input("Choose a number corresponding to a class or Back to return to main menu: ")
-
         while True:
             if job == "Back":
                 return None         
@@ -145,12 +144,12 @@ def createNewPlayer():
                 if int(job) > 0 and int(job) <= 3 :
                     break
             except ValueError:
-                print("Invalid input.", end="")
-            
+                print("Invalid input.", end="") 
             job = input("Please input a valid class number or Back: ")
+        jobStats = cursor.execute("SELECT MaxHP, ATK, DEF, SPD FROM Jobs WHERE JobID = ?",(job)).fetchone()
 
+        # Request User for valid Name
         name = input("Input the name of your Character or Back to return to main menu: ")
-
         while True:
             if name == "Back":
                 return None
@@ -161,56 +160,54 @@ def createNewPlayer():
                 break
 
         try:    
-            playerID = cursor.execute("SELECT COUNT(*) FROM PlayerInfo").fetchone()[0]+1 # Gets the next valid id / Implementation is faulty, will need to change
             playerStatsDict = {
                 'LVL': 1,
-                'HP': Player.jobStatsDictionary[job]['MaxHP'],
-                'ATK': Player.jobStatsDictionary[job]['ATK'],
-                'DEF': Player.jobStatsDictionary[job]['DEF'],
-                'SPD': Player.jobStatsDictionary[job]['SPD']
+                'HP': jobStats[0],
+                'ATK': jobStats[1],
+                'DEF': jobStats[2],
+                'SPD': jobStats[3]
             }
             seed = random.randint(1,100_000_000_000)
-            random.seed(seed)
-            cursor.execute("INSERT INTO PlayerInfo VALUES (?,?,?,?,?,?,?,?,?,?,?)",(playerID,name,playerStatsDict["HP"],playerStatsDict["HP"],playerStatsDict["ATK"],playerStatsDict["DEF"],playerStatsDict["SPD"],0,playerStatsDict["LVL"],seed,int(job)))
+            # random.seed(seed)
+            cursor.execute("INSERT INTO PlayerInfo VALUES (?,?,?,?,?,?,?,?,?,?)",(name,playerStatsDict["HP"],playerStatsDict["HP"],playerStatsDict["ATK"],playerStatsDict["DEF"],playerStatsDict["SPD"],0,playerStatsDict["LVL"],seed,int(job)))
             cursor.commit()
-            return Player(name,playerStatsDict,job)
+            connection.close()
+            return Player(name,playerStatsDict,job,jobStats)
         except Exception as e:
             print(e)
-            continue
-        finally:
-            connection.close()
+            exit()
 
-def createSavedPlayer(characterList):
+def createSavedPlayer(characterList) -> None:
     connection = sqlite3.connect("Info.db")
     cursor = connection.cursor()
     userInput = input("Input Saved Character Name or Back to return to main menu: ")
 
     if userInput == "Back":
-            return None
+        return None
     
-    # Continiously ask for valid character name
+    # Continiously ask for valid character name and construct player if valid name
     while True:
         if userInput in characterList:        
             try:
-                playerInfo = cursor.execute("SELECT * FROM PlayerInfo WHERE PlayerName=?",(userInput,)).fetchone()
+                playerInfo = cursor.execute("SELECT LVL,HP,MaxHP,ATK,DEF,SPD,EXP,Seed,JobID FROM PlayerInfo WHERE PlayerName=?",(userInput,)).fetchone()
+                jobStats = cursor.execute("SELECT MaxHP, ATK, DEF, SPD FROM Jobs WHERE JobID = ?",(playerInfo[8],)).fetchone()
                 playerStatsDict = {
-                'LVL': 1,
-                'HP': playerInfo[3],
-                'ATK': playerInfo[4],
-                'DEF': playerInfo[5],
-                'SPD': playerInfo[6]
+                'LVL': playerInfo[0],
+                'MaxHP': playerInfo[2],
+                'ATK': playerInfo[3],
+                'DEF': playerInfo[4],
+                'SPD': playerInfo[5]
                 }
-                player = Player(userInput,playerInfo[1],playerStatsDict,playerInfo[10])
-                player.EXP = playerInfo[7]
-                player.HP = playerInfo[2]
-                random.seed(playerInfo[9])
+                player = Player(userInput,playerStatsDict,playerInfo[8],jobStats)
+                player.EXP = playerInfo[6]
+                player.HP = playerInfo[1]
+                # random.seed(playerInfo[7])
+                connection.close()
                 return player
             except Exception as e:
                 print(e)
-                continue
-            finally:
-                connection.close()
-        
+                exit()
+                
         else:
             userInput = input("Invalid character name. Input an existing character name: ")
 
@@ -220,10 +217,8 @@ def savePlayer(player: Player):
     try:
         cursor.execute("UPDATE PlayerInfo SET HP=?, MaxHP=?, ATK=?, DEF=?, SPD=?, EXP=?, LVL=? WHERE PlayerName=?",(player.HP,player.MaxHP,player.ATK,player.DEF,player.SPD,player.EXP,player.LVL,player.Name))
         connection.commit()
-        # return True
     except Exception as e:
         print(e)
-        # return False
     finally:
         connection.close()
 
@@ -247,6 +242,7 @@ if __name__ == "__main__":
             print("Invalid Input")
 
     floor = Floor.Floor(3,player.LVL)
+    room: Floor.MonsterRoom
     for room in floor.roomList:
         entityList = room.monsterList
         entityList.insert(0,player)
