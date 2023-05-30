@@ -1,5 +1,5 @@
+from Equipment import Equipment
 import math,textwrap,random
-
 class Entity():
     def __init__(self, _Type: str, _Name:str, _statDic: dict) -> None:
         self.Type = _Type 
@@ -49,7 +49,7 @@ class Player(Entity):
         super().__init__("Player",_playerName,_playerStatsDict)
         self.playerJob = _playerJob
         self.playerLVLStats = _playerLVLStats
-        self.equipment = {
+        self.equipment: dict[str, Equipment] = {
             "Helmet" : None,
             "Chestplate" : None,
             "Leggings" : None,

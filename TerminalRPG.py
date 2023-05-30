@@ -1,5 +1,6 @@
 import Floor
-from Entity import Player,Entity
+from Entity import Player,Entity,Monster
+from Equipment import Equipment
 import textwrap, random, sqlite3, sys, time
 
 def printPlayerBattleActions() -> None:
@@ -30,16 +31,17 @@ def printSavedCharacters() -> list:
     return characterList
 
 def printCurrentBattleHP(entityList: list[Entity]) -> None:
+    player: Player = entityList[0]
     print(textwrap.dedent(f"""\
     Player:
-    {entityList[0].Name} LVL:{entityList[0].LVL} HP:{entityList[0].HP}/{entityList[0].MaxHP} EXP:{entityList[0].EXP}/{entityList[0].MaxHP}
+    {player.Name} LVL:{player.LVL} HP:{player.HP}/{player.MaxHP} EXP:{player.EXP}/{player.MaxHP}
     Enemies:"""))
     for entity in entityList[1:]:
         print(f"{entity.Name} LVL:{entity.LVL} HP:{entity.HP}/{entity.MaxHP}", end=" ")
     print("")
 
-def defineActionOrder(entityList: list[Entity]) -> list:
-    actionOrder = []
+def defineActionOrder(entityList: list[Entity]) -> list[int]:
+    actionOrder: list[int] = []
     for index,entity in enumerate(entityList):
         if len(actionOrder) == 0:
             actionOrder.append(index)
@@ -58,6 +60,7 @@ def initBattle(entityList: list[Entity]) -> Player:
     print("Monsters Encountered")
     actionOrder = defineActionOrder(entityList)
     currentTurn = 0
+    player: Player = entityList[0]
     while True:
         time.sleep(.25)
         # If the player is the only one alive, End Battle
@@ -66,55 +69,57 @@ def initBattle(entityList: list[Entity]) -> Player:
             break
         # Current Turn is Player
         if entityList[actionOrder[currentTurn]].Type == "Player":
-            entityList[0].isDefending = False
+            player.isDefending = False
             printCurrentBattleHP(entityList)
             printPlayerBattleActions()
             userInput = input("Choose your action: ").upper()
             print("-------------------------------------------------------------------------")
             if userInput == 'A':
-                selectedMonster = 1
+                monsterChoice = 1
                 if len(entityList) > 2:
                     while True:
                         try:
-                            selectedMonster = int(input(f"Select Enemy to Attack(1-{len(entityList)-1}): "))
+                            monsterChoice = int(input(f"Select Enemy to Attack(1-{len(entityList)-1}): "))
                             print("-------------------------------------------------------------------------")
                             break
                         except ValueError:
                             print("Invalid Input. Input an Integer.")
-
-                print(f"{entityList[0].Name} attacked {entityList[selectedMonster].Name} for {entityList[selectedMonster].calculateDamage(entityList[0].ATK)}")
+                selectedMonster: Monster = entityList[monsterChoice]
+                print(f"{player.Name} attacked {selectedMonster.Name} for {selectedMonster.calculateDamage(player.ATK)}")
                 print("-------------------------------------------------------------------------")
                 time.sleep(.25)
-                if not entityList[selectedMonster].isAlive:
-                    print(f"{entityList[0].Name} defeated {entityList[selectedMonster].Name}")
+                if not selectedMonster.isAlive:
+                    print(f"{player.Name} defeated {selectedMonster.Name}")
                     print("-------------------------------------------------------------------------")
-                    entityList[0].EXP += entityList[selectedMonster].LVL
+                    player.EXP += selectedMonster.LVL
                     time.sleep(.25)
-                    if entityList[0].checkLVL():
-                        print(f"{entityList[0].Name} Leveled UP!\nYou are now Level {entityList[0].LVL}")
+                    if player.checkLVL():
+                        print(f"{player.Name} Leveled UP!\nYou are now Level {player.LVL}")
                         print("-------------------------------------------------------------------------")
-                    entityList.pop(selectedMonster)
+                    entityList.pop(monsterChoice)
                     actionOrder = defineActionOrder(entityList)
 
             elif userInput == 'D':
-                entityList[0].isDefending = True
+                player.isDefending = True
             # End battle
             elif userInput == 'R':
                 print("You Ran Away Successfully")
-                # Add Weighted Run Away
+                # TODO Add Weighted Run Away
                 break
             else:
                 print("Invalid Input. Input a Valid Action")
                 printPlayerBattleActions()
         # Current Turn is Enemy
         else:
-            entityList[actionOrder[currentTurn]].isDefending = False
-            monsterAction = entityList[actionOrder[currentTurn]].randomAction()
+            currentMonster: Monster = entityList[actionOrder[currentTurn]]
+            currentMonster.isDefending = False
+            
+            monsterAction = currentMonster.randomAction()
             if monsterAction == "Attack":
-                print(f"{entityList[actionOrder[currentTurn]].Name} attacked {entityList[0].Name} for {entityList[0].calculateDamage(entityList[actionOrder[currentTurn]].ATK)}")
+                print(f"{currentMonster.Name} attacked {player.Name} for {player.calculateDamage(currentMonster.ATK)}")
             else:
-                entityList[actionOrder[currentTurn]].isDefending = True
-                print(f"{entityList[actionOrder[currentTurn]].Name} is Defending")
+                currentMonster.isDefending = True
+                print(f"{currentMonster.Name} is Defending")
             print("-------------------------------------------------------------------------")
 
         # If the player dies during the fight, End Battle
@@ -170,7 +175,7 @@ def createNewPlayer() -> Player:
             seed = random.randint(1,100_000_000_000)
             # random.seed(seed)
             cursor.execute("INSERT INTO PlayerInfo VALUES (?,?,?,?,?,?,?,?,?,?)",(name,playerStatsDict["HP"],playerStatsDict["HP"],playerStatsDict["ATK"],playerStatsDict["DEF"],playerStatsDict["SPD"],0,playerStatsDict["LVL"],seed,int(job)))
-            cursor.commit()
+            connection.commit()
             connection.close()
             return Player(name,playerStatsDict,job,jobStats)
         except Exception as e:
@@ -216,6 +221,9 @@ def savePlayer(player: Player):
     cursor = connection.cursor()
     try:
         cursor.execute("UPDATE PlayerInfo SET HP=?, MaxHP=?, ATK=?, DEF=?, SPD=?, EXP=?, LVL=? WHERE PlayerName=?",(player.HP,player.MaxHP,player.ATK,player.DEF,player.SPD,player.EXP,player.LVL,player.Name))
+        for key in player.equipment:
+            if player.equipment[key] is not None:
+                player.equipment[key].updateDB()
         connection.commit()
     except Exception as e:
         print(e)
