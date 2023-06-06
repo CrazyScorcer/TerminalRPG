@@ -1,4 +1,3 @@
-from Equipment import Equipment
 import math,textwrap,random
 class Entity():
     def __init__(self, _Type: str, _Name:str, _statDic: dict) -> None:
@@ -47,6 +46,7 @@ class Monster(Entity):
 class Player(Entity):
     def __init__(self,_playerName: str,_playerStatsDict: dict,_playerJob: int,_playerLVLStats: tuple) -> None:
         super().__init__("Player",_playerName,_playerStatsDict)
+        from Equipment import Equipment
         self.playerJob = _playerJob
         self.playerLVLStats = _playerLVLStats
         self.equipment: dict[str, Equipment] = {
@@ -55,6 +55,12 @@ class Player(Entity):
             "Leggings" : None,
             "Footwear" : None,
             "Weapon": None
+        }
+        self.equipmentStats = {
+            "MaxHP" : 0,
+            "ATK" : 0,
+            "DEF" : 0,
+            "SPD" : 0
         }
         self.EXP = 0
         self.MaxEXP = round(math.pow(math.e,self.LVL/100)*(self.LVL+5))
@@ -75,4 +81,13 @@ class Player(Entity):
         self.ATK += self.playerLVLStats[1]
         self.DEF += self.playerLVLStats[2]
         self.SPD += self.playerLVLStats[3]
+    
+    def getAdjustedStats(self) -> dict[int]:
+        return {
+            "HP" : self.HP + self.equipmentStats["MaxHP"],
+            "MaxHP" : self.MaxHP + self.equipmentStats["MaxHP"],
+            "ATK" : self.ATK + self.equipmentStats["ATK"],
+            "DEF" : self.DEF + self.equipmentStats["DEF"],
+            "SPD" : self.SPD + self.equipmentStats["SPD"],
+        }
 

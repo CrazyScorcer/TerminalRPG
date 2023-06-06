@@ -11,21 +11,17 @@ class Equipment:
         self.description = _description
 
     def equipItem(self, player: Player) -> Player:
-        player.HP += self.MaxHP
-        player.MaxHP += self.MaxHP
-        player.ATK += self.ATK
-        player.DEF += self.DEF
-        player.SPD += self.SPD
+        player.equipmentStats["MaxHP"] += self.MaxHP
+        player.equipmentStats["ATK"] += self.ATK
+        player.equipmentStats["DEF"] += self.DEF
+        player.equipmentStats["SPD"] += self.SPD
         return player
     
     def unequipItem(self, player: Player) -> Player:
-        player.HP -= self.MaxHP
-        if player.HP < 1:
-            player.HP = 1
-        player.MaxHP -= self.MaxHP
-        player.ATK -= self.ATK
-        player.DEF -= self.DEF
-        player.SPD -= self.SPD
+        player.equipmentStats["MaxHP"] -= self.MaxHP
+        player.equipmentStats["ATK"] -= self.ATK
+        player.equipmentStats["DEF"] -= self.DEF
+        player.equipmentStats["SPD"] -= self.SPD
         return player
     
     def updateDB(self, player:Player, bodyPart: str = "") -> None:

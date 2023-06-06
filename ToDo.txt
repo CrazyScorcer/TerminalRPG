@@ -1,3 +1,4 @@
+Change Way Stats are combined
 Add Events
 Add Equipment
     Armor
@@ -5,7 +6,6 @@ Add Equipment
     Rarity
 Add Usable Items
     Potions
-Store Enums into DB
 Add Skills
 Add Better names
 Add Story
