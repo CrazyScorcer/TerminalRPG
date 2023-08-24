@@ -16,17 +16,14 @@ class Entity():
         self.isDefending = False
         self.isAlive = True
 
-    def calculateDamage(self,damage) -> int:
-        damage = damage*math.pow(math.e,(-self.DEF/damage))
+    def calculateDamage(self,damage,defense = None) -> int:
+        if defense == None:
+            defense = self.DEF
+        damage = damage*math.pow(math.e,-defense/damage)
         if self.isDefending:
             damage = damage/2
 
         finalDamage = round(damage) if round(damage) > 1 else 1
-        self.HP -= finalDamage
-
-        if self.HP <= 0:
-            self.isAlive = False
-
         return finalDamage
 
     def printStats(self) -> None:
@@ -45,6 +42,15 @@ class Monster(Entity):
     
     def randomAction(self) -> str:
         return random.choice(["Attack","Defend"])
+    
+    def calculateDamage(self, damage) -> int:
+        finalDamage = super().calculateDamage(damage)
+        self.HP -= finalDamage
+
+        if self.HP <= 0:
+            self.isAlive = False
+            
+        return finalDamage
 
 class Player(Entity):
     def __init__(self,_playerName: str,_playerStatsDict: dict,_playerJob: int,_playerLVLStats: tuple) -> None:
@@ -58,11 +64,18 @@ class Player(Entity):
             "Footwear" : None,
             "Weapon": None
         }
-        self.equipmentStats = {
+        self.equipmentStats: dict[str, int] = {
             "MaxHP" : 0,
             "ATK" : 0,
             "DEF" : 0,
             "SPD" : 0
+        }
+        self.finalStats: dict[str, int] = {
+            "HP" : 0,
+            "MaxHP" : 0,
+            "ATK" : 0,
+            "DEF" : 0,
+            "SPD" : 0,
         }
         self.EXP = 0
         self.MaxEXP = round(math.pow(math.e,self.LVL/100)*(self.LVL+5))

@@ -1,6 +1,6 @@
 import Floor
 from Entity import Player,Entity,Monster
-from Equipment import Equipment
+from Equipment import Armor, Weapon
 import textwrap, random, sqlite3, sys, time
 
 def printPlayerBattleActions() -> None:
@@ -34,7 +34,7 @@ def printCurrentBattleHP(entityList: list[Entity]) -> None:
     player: Player = entityList[0]
     print(textwrap.dedent(f"""\
     Player:
-    {player.Name} LVL:{player.LVL} HP:{player.HP}/{player.MaxHP} EXP:{player.EXP}/{player.MaxHP}
+    {player.Name} LVL:{player.LVL} HP:{player.finalStats['HP']}/{player.finalStats['MaxHP']} EXP:{player.EXP}/{player.MaxEXP}
     Enemies:"""))
     for entity in entityList[1:]:
         print(f"{entity.Name} LVL:{entity.LVL} HP:{entity.HP}/{entity.MaxHP}", end=" ")
@@ -48,7 +48,13 @@ def defineActionOrder(entityList: list[Entity]) -> list[int]:
         else:
             inActionOrder = False
             for i in range(len(actionOrder)):
-                if entityList[actionOrder[i]].SPD < entity.SPD:
+                if actionOrder[i] == 0: # entity 0 is the player
+                    player: Player = entityList[0]
+                    speedCheck = player.finalStats["SPD"]
+                else:
+                    speedCheck = entityList[actionOrder[i]].SPD
+                    
+                if speedCheck < entity.SPD:
                     actionOrder.insert(i,index)
                     inActionOrder = True
                     break
@@ -68,7 +74,7 @@ def initBattle(entityList: list[Entity]) -> Player:
             print("Battle Won!")
             break
         # Current Turn is Player
-        if entityList[actionOrder[currentTurn]].Type == "Player":
+        if actionOrder[currentTurn] == 0:
             player.isDefending = False
             printCurrentBattleHP(entityList)
             printPlayerBattleActions()
@@ -84,8 +90,10 @@ def initBattle(entityList: list[Entity]) -> Player:
                             break
                         except ValueError:
                             print("Invalid Input. Input an Integer.")
+                        except IndexError:
+                            print(f"Invalud Input. Select Value in range(1-{len(entityList)-1}):")
                 selectedMonster: Monster = entityList[monsterChoice]
-                print(f"{player.Name} attacked {selectedMonster.Name} for {selectedMonster.calculateDamage(player.ATK)}")
+                print(f"{player.Name} attacked {selectedMonster.Name} for {selectedMonster.calculateDamage(player.finalStats['ATK'])}")
                 print("-------------------------------------------------------------------------")
                 time.sleep(.25)
                 if not selectedMonster.isAlive:
@@ -193,25 +201,25 @@ def createSavedPlayer(characterList) -> None:
     # Continiously ask for valid character name and construct player if valid name
     while True:
         if userInput in characterList:        
-            try:
-                playerInfo = cursor.execute("SELECT LVL,HP,MaxHP,ATK,DEF,SPD,EXP,Seed,JobID FROM PlayerInfo WHERE PlayerName=?",(userInput,)).fetchone()
-                jobStats = cursor.execute("SELECT MaxHP, ATK, DEF, SPD FROM Jobs WHERE JobID = ?",(playerInfo[8],)).fetchone()
-                playerStatsDict = {
+            playerInfo = cursor.execute("SELECT LVL,HP,MaxHP,ATK,DEF,SPD,EXP,Seed,JobID FROM PlayerInfo WHERE PlayerName=?",(userInput,)).fetchone()
+            jobStats = cursor.execute("SELECT MaxHP, ATK, DEF, SPD FROM Jobs WHERE JobID = ?",(playerInfo[8],)).fetchone()
+            playerArmorTuples = cursor.execute("SELECT Armor.Name, ArmorType.Name, Armor.HP, Armor.DEF, Armor.SPD FROM ((PlayerArmor Inner Join Armor ON PlayerArmor.ArmorID = Armor.ArmorID) Inner Join ArmorType ON Armor.ArmorTypeID = ArmorType.ArmorTypeID) WHERE PlayerName = ?",(userInput,)).fetchall()
+            playerStatsDict = {
                 'LVL': playerInfo[0],
                 'MaxHP': playerInfo[2],
                 'ATK': playerInfo[3],
                 'DEF': playerInfo[4],
                 'SPD': playerInfo[5]
-                }
-                player = Player(userInput,playerStatsDict,playerInfo[8],jobStats)
-                player.EXP = playerInfo[6]
-                player.HP = playerInfo[1]
-                # random.seed(playerInfo[7])
-                connection.close()
-                return player
-            except Exception as e:
-                print(e)
-                exit()
+            }
+            player = Player(userInput,playerStatsDict,playerInfo[8],jobStats)
+            player.EXP = playerInfo[6]
+            player.HP = playerInfo[1]
+            for playerArmorTuple in playerArmorTuples:
+                player.equipItem(Armor(playerArmorTuple[1],playerArmorTuple[2],playerArmorTuple[3],playerArmorTuple[4],playerArmorTuple[0]))
+            player.updateFinalStats()
+            # random.seed(playerInfo[7])
+            connection.close()
+            return player
                 
         else:
             userInput = input("Invalid character name. Input an existing character name: ")
@@ -223,7 +231,8 @@ def savePlayer(player: Player):
         cursor.execute("UPDATE PlayerInfo SET HP=?, MaxHP=?, ATK=?, DEF=?, SPD=?, EXP=?, LVL=? WHERE PlayerName=?",(player.HP,player.MaxHP,player.ATK,player.DEF,player.SPD,player.EXP,player.LVL,player.Name))
         for key in player.equipment:
             if player.equipment[key] is not None:
-                player.equipment[key].updateDB()
+                # player.equipment[key].updateDB()
+                pass
         connection.commit()
     except Exception as e:
         print(e)
