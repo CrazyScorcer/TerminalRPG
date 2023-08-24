@@ -248,7 +248,8 @@ if __name__ == "__main__":
             sys.exit("Exit Game")
         else:
             print("Invalid Input")
-
+    
+    # start of game
     floor = Floor.Floor(3,player.LVL)
     room: Floor.MonsterRoom
     for room in floor.roomList:
